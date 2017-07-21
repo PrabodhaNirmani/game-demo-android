@@ -9,14 +9,18 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
+import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.Box2D;
 import com.badlogic.gdx.physics.box2d.Box2DDebugRenderer;
+import com.badlogic.gdx.physics.box2d.FixtureDef;
+import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.codeandweb.physicseditor.PhysicsShapeCache;
 
 import java.util.HashMap;
+import java.util.Random;
 
 public class MyGdxGame extends ApplicationAdapter {
 
@@ -24,6 +28,9 @@ public class MyGdxGame extends ApplicationAdapter {
 	static final int VELOCITY_ITERATIONS = 6;
 	static final int POSITION_ITERATIONS = 2;
 	static final float SCALE = 0.05f;
+	static final  int COUNT=10;
+	Body[] fruitBodies=new Body[COUNT];
+	String[]names=new String[COUNT];
 
 	TextureAtlas textureAtlas;
 	SpriteBatch batch;
@@ -36,6 +43,7 @@ public class MyGdxGame extends ApplicationAdapter {
 	Box2DDebugRenderer debugRenderer;
 	PhysicsShapeCache physicsBodies;
 	Body banana;
+	Body ground;
 	float accumulator = 0;
 
 	@Override
@@ -54,7 +62,44 @@ public class MyGdxGame extends ApplicationAdapter {
 		debugRenderer = new Box2DDebugRenderer();
 
 		banana = createBody("banana", 10, 50, 0);
+		generateFruit();
 
+	}
+
+	private void generateFruit(){
+		String[] fruitNames=new String[]{"banana","cherries","orange"};
+
+		Random random =new Random();
+
+		for(int i=0;i<fruitBodies.length;i++){
+			String name = fruitNames[random.nextInt(fruitNames.length)];
+
+			float x = random.nextFloat() * 50;
+			float y = random.nextFloat() * 50 + 50;
+
+			names[i] = name;
+			fruitBodies[i] = createBody(name, x, y, 0);
+		}
+
+	}
+
+	private void createGround(){
+		if(ground!=null) world.destroyBody(ground);
+
+		BodyDef bodyDef=new BodyDef();
+		bodyDef.type=BodyDef.BodyType.StaticBody;
+
+		FixtureDef fixtureDef= new FixtureDef();
+		PolygonShape shape=new PolygonShape();
+		shape.setAsBox(camera.viewportHeight,1);
+
+		fixtureDef.shape=shape;
+
+		ground=world.createBody(bodyDef);
+		ground.createFixture(fixtureDef);
+		ground.setTransform(0,0,0);
+
+		shape.dispose();
 	}
 
 	private Body createBody(String name, float x, float y, float rotation) {
@@ -90,11 +135,12 @@ public class MyGdxGame extends ApplicationAdapter {
 		}
 	}
 
-	private void drawSprite(String name, float x, float y){
+	private void drawSprite(String name, float x, float y, float degrees){
 		Sprite sprite = sprites.get(name);
 
 		sprite.setPosition(x, y);
-
+		sprite.setRotation(degrees);
+		sprite.setOrigin(0f,0f);
 		sprite.draw(batch);
 	}
 
@@ -104,18 +150,27 @@ public class MyGdxGame extends ApplicationAdapter {
 
 	@Override
 	public void render () {
-		Gdx.gl.glClearColor(0f, 0f, 0f, 1);
-//		Gdx.gl.glClearColor(0.57f, 0.77f, 0.85f, 1);
+//		Gdx.gl.glClearColor(0f, 0f, 0f, 1);
+		Gdx.gl.glClearColor(0.57f, 0.77f, 0.85f, 1);
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
 		stepWorld();
 
 		batch.begin();
 
-		Vector2 position = banana.getPosition();
-		drawSprite("banana", position.x, position.y);
-//		drawSprite("banana",0,0);
-//		drawSprite("cherries",5,5);
+		for (int i = 0; i < fruitBodies.length; i++) {
+			Body body = fruitBodies[i];
+			String name = names[i];
+
+			Vector2 position = body.getPosition();
+			float degrees = (float) Math.toDegrees(body.getAngle());
+			drawSprite(name, position.x, position.y, degrees);
+		}
+//		Vector2 position = banana.getPosition();
+//		float degrees = (float)Math.toDegrees(banana.getAngle());
+//		drawSprite("banana", position.x, position.y,degrees);
+////		drawSprite("banana",0,0);
+////		drawSprite("cherries",5,5);
 		batch.end();
 		debugRenderer.render(world, camera.combined);
 	}
@@ -135,5 +190,7 @@ public class MyGdxGame extends ApplicationAdapter {
 	public void resize(int width, int height) {
 		viewport.update(width,height,true);
 		batch.setProjectionMatrix(camera.combined);
+
+		createGround();
 	}
 }
